@@ -1,0 +1,502 @@
+{
+  "name": "Supabase RAG Google Drive Files Delete",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "rag_docs_db",
+        "filterType": "string",
+        "filterString": "=metadata->>fileId=like.*{{ $('Loop Over File Ids').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3264,
+        1664
+      ],
+      "id": "2ce21952-f253-4d02-a4d7-f20ebef4b51a",
+      "name": "Delete file",
+      "retryOnFail": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "u1PQ7Q8KRIufKLPd",
+          "name": "Dev _ Sasha Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "07af3001-7e31-4109-8818-1c557a385405",
+              "leftValue": "={{ $json.files }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        1728
+      ],
+      "id": "6c4326ab-c6b3-40a6-be9b-0bd49a73f554",
+      "name": "Filter for Empty List",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2592,
+        1392
+      ],
+      "id": "4817dd3c-b385-41c6-b01d-1c66c03247c1",
+      "name": "No Operation after Deletion",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2368,
+        1728
+      ],
+      "id": "01ae1816-8b73-457f-b271-12acc935db8f",
+      "name": "Loop Over File Ids",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3712,
+        1728
+      ],
+      "id": "9b0afe02-3bbb-434c-a189-2e071061dafe",
+      "name": "Wait 5 sec after Delete",
+      "webhookId": "362cd2f6-eca2-4f8a-87f4-26d6c855c660",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all file extension\nconst fileExtension = $input.first().json.fileExtension.toLowerCase();\n// $json.fullFileExtension.toLowerCase();\n// Comprehensive file extension mappings\nconst fileCategories = {\n\n  pdf: [\n    'pdf'\n  ],\n    \n  image: [\n    'jpeg', 'png', 'webp', 'heic', 'heif'\n  ],\n  \n  audio: [\n    'mp3', 'wav', 'aiff', 'aac', 'ogg', 'flac',\n  ],\n  \n  video: [\n    'mp4', 'mpeg', 'mov', 'avi', 'x-flv', 'flv', 'mpg',\n    'webm', 'wmv', '3gpp'\n  ]\n};\n\n// Function to categorize file\nfunction categorizeFile(extension) {\n  for (const [category, extensions] of Object.entries(fileCategories)) {\n    if (extensions.includes(extension)) {\n      return category;\n    }\n  }\n  return 'other';\n}\n  \n  const category = categorizeFile(fileExtension);\n  \n  return {\n    json: {\n      category: category,\n      extension: fileExtension,\n    },\n  };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        1584
+      ],
+      "id": "51fa5049-8d6c-409b-bf76-0fbc1ad1ff45",
+      "name": "Categorize File",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "766cc14e-15a5-48f6-8c69-2def05af4531",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "05646176-1afb-469b-972d-b8e26ddd2954",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "image",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "623b6deb-58cf-4e47-b106-49c0ba3612fb",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "audio",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "81c7d18b-9954-4335-b411-369226d4f7c6",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "video",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3040,
+        1664
+      ],
+      "id": "1695e7d3-0b7a-4d90-9123-9a1439a6658a",
+      "name": "If File Type is Acceptable",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const fileObjects = $input.first().json.files;\nconst newItems = fileObjects.map(file => ({\n    json: {\n        id: file.id,\n        name: file.name,\n        fileExtension: file.fileExtension,\n        size: file.size\n    }\n}));\n\nreturn newItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2144,
+        1728
+      ],
+      "id": "a9d057fb-c12d-4895-84e1-2e30ef246eff",
+      "name": "Convert to List of Individual Objects",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f11c815f-d3f6-4b85-a29a-e084d0f4bfea",
+              "leftValue": "={{ $json.size.toNumber() }}",
+              "rightValue": 2147483648,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2592,
+        1584
+      ],
+      "id": "61532e6f-7465-4d90-b308-ed2eb9681953",
+      "name": "If File Size < 2 GB",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "='{{ $('Delete File RAG Sub-Workflow').item.json.folderId }}' in parents and trashed = false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id, name, fileExtension, size)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1696,
+        1728
+      ],
+      "id": "e854d8d0-5356-44b6-b83f-5215054849ea",
+      "name": "Google Drive API: Get Files from Specified Folder",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Loop Over File Ids').item.json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3488,
+        1664
+      ],
+      "id": "221b7144-17cd-4354-a47e-d9061b70c143",
+      "name": "Google Drive API: Delete File from Specified Folder1",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        1728
+      ],
+      "id": "ad9394f2-858a-466e-9ddf-3b4251494c4b",
+      "name": "Delete File RAG Sub-Workflow",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "content": "# Google Drive to Supabase RAG Deletion Sub-Workflow - Complete Documentation\n\n## 📋 Overview\n\nThis workflow serves as a specialized **cleanup and synchronization sub-workflow** designed for Retrieval-Augmented Generation (RAG) systems. Its primary function is to monitor a specific Google Drive folder, identify files, and perform a \"cascading delete\" across both a **Supabase Vector Database** and **Google Drive storage**.\n\nBy ensuring that deleted or processed files are removed from the vector store (`rag_docs_db`) and the source cloud storage simultaneously, the workflow prevents \"hallucinations\" caused by outdated or orphaned data chunks in the RAG pipeline. It features intelligent file categorization, size validation (under 2GB), and built-in rate-limiting delays to ensure stable operation during bulk deletions.\n\n## 👥 Who Is This Workflow For?\n\n* **AI Engineers** managing RAG pipelines who need to keep vector databases in sync with source files.\n* **n8n Developers** building modular automation using the \"Execute Workflow\" trigger pattern.\n* **Data Engineers** responsible for maintaining Supabase-hosted vector stores.\n* **System Architects** designing automated document lifecycle management systems.\n\n## 🎯 Problem Statement\n\nManaging document-based RAG systems often leads to \"Data Drift,\" where:\n\n* Files are deleted from cloud storage but their vector embeddings remain in the database, causing the AI to reference non-existent documents.\n* Manual cleanup of large datasets is prone to human error and API rate-limiting issues.\n* Unsupported file types (e.g., system files) or excessively large files (e.g., >2GB videos) can crash processing nodes if not filtered out early.\n\nThis workflow automates the identification, validation, and dual-deletion process, ensuring data integrity across the entire AI stack.\n\n## ⚙️ How This Workflow Works\n\n### Step 1: Execution Trigger\n\nThe workflow is initialized as a **Sub-Workflow**. It expects an input containing a `folderId` passed from a parent workflow.\n\n### Step 2: Google Drive Discovery\n\nThe workflow queries the Google Drive API to list all non-trashed files within the specified folder. It specifically requests the `id`, `name`, `fileExtension`, and `size` fields to minimize payload overhead.\n\n### Step 3: Data Transformation & Validation\n\n1. **Array Conversion**: The raw Google Drive list is converted into individual JSON objects for iterative processing.\n2. **Empty Check**: If the folder is empty, the workflow terminates safely.\n3. **Looping**: The **Split In Batches** node begins iterating through the files one by one.\n\n### Step 4: Filtering Logic\n\nFor every file in the loop, the workflow applies two strict filters:\n\n* **Size Filter**: Ensures the file is less than **2,147,483,648 bytes (2 GB)**.\n* **Category Filter**: A Javascript **Code Node** categorizes the extension into `pdf`, `image`, `audio`, or `video`. If the category is \"other,\" the file is skipped to protect the RAG database from unsupported formats.\n\n### Step 5: Dual Deletion Phase\n\nIf the file passes all checks:\n\n1. **Supabase Delete**: It executes a DELETE operation on the `rag_docs_db` table where the metadata `fileId` matches the current loop item.\n2. **Google Drive Delete**: It sends a DELETE request to the Google Drive API to remove the physical file.\n3. **Rate Limiting**: A **5-second Wait** node is triggered after every deletion to respect Google Drive and Supabase API rate limits.\n\n## ✨ Key Benefits\n\n* **Data Integrity**: Guarantees that the Vector Store and Cloud Storage are perfectly mirrored.\n* **Resource Protection**: The 2GB limit and extension filtering prevent the workflow from timing out or processing junk data.\n* **API Stability**: Built-in 5-second delays and retry logic (`retryOnFail: true`) ensure reliability during high-volume operations.\n* **Modular Design**: Can be plugged into any larger RAG pipeline as a standard \"Cleanup\" utility.\n\n## 📦 Requirements\n\n### Technical Requirements\n\n* **n8n version**: 1.0+ (utilizes modern Split-In-Batches and Version 4 HTTP nodes)\n* **Supabase**: An active project with a table named `rag_docs_db` including a JSONB metadata column.\n* **Google Cloud Console**: An active project with the **Google Drive API** enabled.\n\n### Credentials & Authentication\n\n#### Google Drive OAuth2\n\n* **Credential Name**: `googleDriveOAuth2Api`\n* **Scopes Required**: `https://www.googleapis.com/auth/drive` or `https://www.googleapis.com/auth/drive.file`\n* **Setup**: Create an OAuth2 client in Google Cloud Console, add your n8n redirect URL, and authorize the account.\n\n#### Supabase API\n\n* **Credential Name**: `supabaseApi`\n* **Details Needed**:\n* **Service Role Key**: Required for DELETE operations (do not use the public/anon key).\n* **Project URL**: Found in your Supabase project settings under API.\n\n\n\n### API & Rate Limits\n\n* **Google Drive API**: Generally 20,000 requests per 100 seconds. However, file deletions are more resource-intensive; the workflow's 5-second wait safely keeps you within limits.\n* **Supabase**: Depends on your tier, but standard DELETE operations on indexed columns are highly efficient.\n\n## 🔧 Setup Instructions\n\n### Step 1: Database Preparation\n\nEnsure your Supabase table `rag_docs_db` has the following structure:\n\n* A column (usually named `metadata`) of type `JSONB`.\n* An index on `metadata->>'fileId'` for high-performance deletions.\n\n### Step 2: Node Configuration Details\n\n#### Categorize File (Code Node)\n\nThis node contains a mapping of extensions. To add more types (e.g., `.txt`), modify the `fileCategories` object:\n\n```javascript\nconst fileCategories = {\n  pdf: ['pdf'],\n  image: ['jpeg', 'png', 'webp'],\n  // Add more here\n};\n\n```\n\n#### Supabase Delete Node\n\n* **Table Name**: `rag_docs_db`\n* **Filter**: `metadata->>fileId=eq.{{ $json.id }}`\n* **Note**: The workflow uses a string filter. Ensure your ingestion workflow stored the Google Drive ID in this exact metadata key.\n\n### Step 3: Testing\n\n1. Use the **\"Test Step\"** on the `Google Drive API: Get Files` node by manually providing a `folderId`.\n2. Observe the **Loop Over File Ids** node to ensure it correctly identifies the list length.\n3. Verify the **Wait** node is functioning to prevent API hammering.\n\n## 🔒 Security & Compliance\n\n### Security Considerations\n\n* ⚠️ **Service Role Key**: The Supabase credential uses a Service Role Key which bypasses Row Level Security (RLS). Ensure your n8n instance is secure and access is restricted.\n* **Hard Deletion**: This workflow performs a permanent delete (`trashed = false` filter check). There is no \"Undo\" for the Supabase vector deletion.\n\n### Data Privacy\n\n* This workflow handles **File Metadata** (IDs and Names) and **PII** if filenames contain sensitive information.\n* Data is processed in memory and logged in n8n's execution history.\n\n### Recommended Security Measures\n\n* **Credential Encryption**: Ensure your n8n environment variables for encryption are set.\n* **Execution Retention**: Set \"Save Execution Progress\" to `false` in production for this specific workflow if file names are highly sensitive.\n\n## ⚠️ Troubleshooting\n\n| Issue | Cause | Solution |\n| --- | --- | --- |\n| **Supabase 404/400** | Table `rag_docs_db` missing | Create the table or update the node parameters to match your schema. |\n| **Google Drive 403** | Insufficient Scopes | Ensure the OAuth2 credential has the full `drive` scope, not just `drive.readonly`. |\n| **Workflow Timeout** | Processing too many files | Increase the n8n memory limit or reduce the number of files per folder. |\n| **Vectors Not Deleted** | Metadata key mismatch | Ensure the ingestion workflow uses the key `fileId` inside the `metadata` JSON object. |\n\n### Debugging Tips\n\n* **Check the Loop**: If the workflow stops after one file, check the `Split In Batches` connection. The \"Done\" output should go to the **No Operation** node.\n* **Wait Node**: If you get \"Rate Limit Exceeded\" from Google, increase the **Wait** node duration from 5 seconds to 10 seconds.\n\n## 🔄 Maintenance & Optimization\n\n* **Optimization**: If you only process PDFs, remove the `audio` and `video` conditions in the **If** node to speed up logic.\n* **Scaling**: For folders with >500 files, consider implementing a \"Limit\" in the Google Drive API call and running the workflow multiple times to avoid n8n memory overhead.\n\n",
+        "height": 2976,
+        "width": 1072,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "ea39adf4-1120-40af-83af-bfcca5877783",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Delete file": {
+      "main": [
+        [
+          {
+            "node": "Google Drive API: Delete File from Specified Folder1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter for Empty List": {
+      "main": [
+        [
+          {
+            "node": "Convert to List of Individual Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over File Ids": {
+      "main": [
+        [
+          {
+            "node": "No Operation after Deletion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If File Size < 2 GB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after Delete": {
+      "main": [
+        [
+          {
+            "node": "Loop Over File Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize File": {
+      "main": [
+        [
+          {
+            "node": "If File Type is Acceptable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File Type is Acceptable": {
+      "main": [
+        [
+          {
+            "node": "Delete file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over File Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to List of Individual Objects": {
+      "main": [
+        [
+          {
+            "node": "Loop Over File Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File Size < 2 GB": {
+      "main": [
+        [
+          {
+            "node": "Categorize File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over File Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive API: Get Files from Specified Folder": {
+      "main": [
+        [
+          {
+            "node": "Filter for Empty List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive API: Delete File from Specified Folder1": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete File RAG Sub-Workflow": {
+      "main": [
+        [
+          {
+            "node": "Google Drive API: Get Files from Specified Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Vsyj4lPuDw5RGiAq",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "46435afb-5442-401f-a990-f34b1df0ca16",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c585f2620b1e811fa88e890c331ab057400f88adebd1d8bd64feeac19ecaec8"
+  },
+  "nodeGroups": [],
+  "id": "uZpR3q45qHD8Lgwy",
+  "tags": [
+    {
+      "updatedAt": "2026-05-29T13:33:10.024Z",
+      "createdAt": "2026-05-29T13:33:10.024Z",
+      "id": "MZSmpIv1lSCq0IgB",
+      "name": "RAG"
+    },
+    {
+      "updatedAt": "2026-05-29T13:34:12.166Z",
+      "createdAt": "2026-05-29T13:34:12.166Z",
+      "id": "hyci9TRRA0lGv2Zg",
+      "name": "Supabase"
+    },
+    {
+      "updatedAt": "2026-08-07T10:30:54.966Z",
+      "createdAt": "2026-05-16T12:51:40.286Z",
+      "id": "kV35B1Fu4iKfjxoJ",
+      "name": "Sub Workflow"
+    }
+  ]
+}

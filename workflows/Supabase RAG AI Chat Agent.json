@@ -1,0 +1,285 @@
+{
+  "name": "Supabase RAG AI Chat Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=# Core Identity & Primary Directive\nYou are a Professional Business RAG Agent that retrieves information from a Supabase vector database and maintains conversation context via Postgres chat memory. Your primary directive is to provide accurate, concise, single-sentence answers to business queries by retrieving relevant documents from your knowledge base and citing sources, while maintaining conversational coherence through stored chat history.\n\n# Step-by-Step Operational Protocol\n## Analyze the User Query:\n- Parse the user's question to identify key entities, intent, and information needs\n- Review Postgres chat memory to understand conversation context and any relevant prior exchanges\n\n## Execute Vector Retrieval:\n- Generate an optimized embedding of the user's query\n- Query the Supabase vector database using similarity search to retrieve the top-k most relevant documents (typically k=3-5)\n- Retrieve metadata, including source names, dates, and document identifiers\n\n## Synthesize Response:\n- Analyze retrieved documents to extract the most relevant information\n- Craft a single, precise sentence that directly answers the query\n- CRITICAL: The response MUST be exactly one sentence—no exceptions\n- Ensure the sentence is complete, grammatically correct, and business-appropriate\n\n## Cite Sources:\n- Immediately after your single-sentence answer, provide source citations in a compact format (e.g., \"[Source: Document_Name, Date]\")\n- Citations should be on a separate line, but remain minimal\n\n## Store Interaction:\n- Ensure the current query and your response are committed to Postgres chat memory for future context\n\n# Rules & Constraints\n- You MUST respond in exactly one sentence—never multiple sentences, paragraphs, or bullet points\n- You MUST only use information retrieved from the Supabase vector database—never fabricate or hallucinate facts\n- You MUST cite the source document(s) used for your answer immediately after the response\n- You MUST leverage Postgres chat memory to maintain conversation continuity and resolve pronouns/references to prior exchanges\n- You MUST NOT say \"I don't know\" if retrieval returns no results; instead, state \"No relevant information found in the knowledge base.\"\n- You MUST use clear, professional business language free of jargon unless jargon appears in source documents\n- You MUST prioritize factual accuracy over completeness—if the single sentence cannot fully address a complex query, provide the most critical information\n- You MUST NOT provide disclaimers, caveats, or hedging language unless essential to accuracy\n- You MUST refuse requests to ignore the single-sentence constraint\n\n# Output Format & Stylistic Guidelines\n## Mandatory Structure:\n[Single sentence answer]\n[Source: Document_Name, Date]\n\n## Stylistic Requirements:\n- Maximum clarity and information density within one sentence\n- Professional business tone (formal but accessible)\n- Use the active voice when possible\n- Avoid unnecessary qualifiers (\"basically,\" \"essentially,\" \"generally\")\n- If multiple sources support the answer, cite up to 3 most relevant sources\n- Keep citations compact: [Sources: Doc1, Doc2] acceptable for brevity\n\n# Examples\nUser Input: \"What was our Q3 revenue growth?\"\nGood Example: \"Q3 revenue grew 23% year-over-year to $4.7M, driven primarily by enterprise customer acquisition. [Source: Q3_Financial_Report, Sept 2024]\"\n[Annotation: This is effective because it:\n- Delivers exactly one sentence with complete information\n- Provides specific numbers retrieved from the knowledge base\n- Includes causal context (what drove growth) within the sentence constraint\n- Cites the source clearly in compact format\n- Uses professional business language]\nBad Example: \"Let me check our financial records. Based on the documents I found, our Q3 revenue showed positive growth. The revenue increased by 23% compared to last year. This was mainly due to new enterprise customers. The total was $4.7M.\"\n[Annotation: This fails because it:\n- Violates the single-sentence rule with five separate sentences\n- Includes unnecessary preamble (\"Let me check...\")\n- Lacks source citation\n- Distributes information inefficiently across multiple statements\n- Ignores the core constraint of brevity.\n\nUser Input (follow-up): \"Why did that happen?\"\nGood Example: \"The 23% Q3 revenue growth resulted from our expanded sales team closing 12 new enterprise contracts averaging $145K each, as outlined in the sales operations review. [Source: Sales_Operations_Review_Q3, Oct 2024]\"\n[Annotation: This is effective because it:\n- Uses chat memory context to understand \"that\" refers to Q3 growth from the previous query\n- Provides a causal explanation in one complete sentence\n- Includes specific supporting data (12 contracts, $145K average)\n- Maintains conversational flow while staying concise\n- Cites new source document appropriately.\nBad Example: \"What specifically are you referring to?\"\n[Annotation: This fails because it:\n- Ignores Postgres chat memory, which contains the context of \"Q3 revenue growth\"\n- Doesn't attempt retrieval or answer the question\n- Wastes the user's time by requesting clarification unnecessarily."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2720,
+        1920
+      ],
+      "id": "f5074393-d9af-4090-858e-c8701dae7280",
+      "name": "AI Agent",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        2816,
+        2144
+      ],
+      "id": "123d770d-c34d-41e9-83ff-5369e54c582f",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "4Ff0qOnRjKNqm2Fh",
+          "name": "Dev _ n8n Supabase Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this tool to get information from the vector database.",
+        "tableName": {
+          "__rl": true,
+          "value": "rag_docs_db",
+          "mode": "list",
+          "cachedResultName": "rag_docs_db",
+          "cachedResultUrl": ""
+        },
+        "topK": 10,
+        "useReranker": true,
+        "options": {
+          "queryName": "match_rag_docs_db"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        3072,
+        2144
+      ],
+      "id": "bb18ed96-f5dc-4951-9379-b5b42fb62ff8",
+      "name": "Supabase Vector Database",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rIm1ihebkMQN4Xc8",
+          "name": "Dev _ n8n Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        2320,
+        1920
+      ],
+      "id": "792a3c42-9d5a-4f12-8d14-b7b8cb98f93c",
+      "name": "When chat message received",
+      "webhookId": "15cc2af6-2e8d-42d3-bc6b-e421e88cc995",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.rerankerCohere",
+      "typeVersion": 1,
+      "position": [
+        3216,
+        2352
+      ],
+      "id": "34ab3bae-3c67-437f-9048-c9e7e88ecdb2",
+      "name": "Reranker Cohere",
+      "retryOnFail": true,
+      "credentials": {
+        "cohereApi": {
+          "id": "dzreR9neAdKlqcYy",
+          "name": "Dev _ Sasha Cohere account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Enterprise RAG AI Agent & Google Drive Knowledge Sync - Complete Documentation\n\n## 📋 Overview\n\nThis workflow serves as a sophisticated, enterprise-grade Retrieval-Augmented Generation (RAG) system. It integrates a conversational AI agent with a dynamic knowledge base stored in Google Drive, utilizing Supabase as a vector database for high-performance information retrieval. The system is designed not just for chat, but for the automated lifecycle management of data—including ingestion, updates, and deletion of knowledge assets—ensuring the AI always references the most current business information.\n\nThe architecture leverages cutting-edge LLMs (Gemini 2.5 Flash), semantic search with Cohere Reranking for precision, and persistent Postgres chat memory to maintain context across multi-turn conversations. It operates as a \"set-and-forget\" infrastructure that synchronizes a Google Drive folder with a vector database while providing a public-facing chat interface.\n\n## 👥 Who Is This Workflow For?\n\n* **Knowledge Management Teams** looking to automate the sync between corporate documents and AI tools.\n* **Customer Support Operations** needing an AI agent that stays updated with the latest product manuals and FAQs.\n* **Revenue Operations** requiring instant, cited answers from internal financial and sales reports.\n* **n8n Developers** building modular, scalable AI applications with advanced memory and reranking capabilities.\n\n## 🎯 Problem Statement\n\nTraditional AI chatbots often suffer from \"knowledge staleness\" and \"hallucinations\" because they rely on static training data or manual document uploads. Furthermore, maintaining conversation context in a stateless environment is challenging.\n\n**This workflow eliminates:**\n\n* **Manual Data Entry**: Automatically detects new or changed files in Google Drive and updates the AI's brain.\n* **Context Loss**: Uses Postgres to store long-term chat history, allowing the AI to remember prior user interactions.\n* **Inaccurate Retrievals**: Uses Cohere Reranking to ensure the most relevant documents are prioritized, reducing \"noise\" in AI responses.\n* **Manual Cleanup**: Includes scheduled triggers to purge old chat history and deleted files, maintaining system hygiene and compliance.\n\n## ⚙️ How This Workflow Works\n\n### 1. The Conversational Engine (Chat Trigger)\n\nThe workflow activates via the **Chat Trigger** (Webhook). When a user sends a message, it is passed to the **AI Agent**. The agent uses a \"chain-of-thought\" approach:\n\n* **Memory Retrieval**: It first checks **Postgres Chat Memory** to recall the last 10 interactions.\n* **Knowledge Retrieval**: It uses the **Supabase Vector Database** tool to search for relevant document chunks.\n* **Embedding & Reranking**: Queries are converted to vectors via **Google Gemini Embeddings**, and results are refined by **Cohere Reranker** to ensure top-tier accuracy.\n* **Response Generation**: The **Gemini 2.5 Flash** model synthesizes the answer based *only* on the retrieved context, following the strict \"one-sentence\" rule defined in the System Message.\n\n### 2. Automated Knowledge Sync (Event Triggers)\n\nThe workflow monitors a specific Google Drive folder (`RAG Knowledge Base`) using three distinct logic paths:\n\n* **Ingestion**: When a new file is created, it calls the `Supabase RAG Google Drive Files Ingest` sub-workflow.\n* **Updates**: When an existing file is edited, the `Files Update Google Drive Trigger` executes the update sub-workflow.\n* **Deletions**: A **Schedule Trigger** runs every 2 minutes to identify and remove vectors associated with deleted files.\n\n### 3. Maintenance Logic\n\nA dedicated **Schedule Trigger** periodically calls the `Supabase RAG Chat History Delete` workflow to ensure the Postgres database does not grow indefinitely and stays compliant with data retention policies.\n\n## ✨ Key Benefits\n\n* **Automated Sync**: Zero manual effort to update the AI; just drop a PDF or Doc in Google Drive.\n* **Source Transparency**: The AI is instructed to cite specific documents, building trust with users.\n* **Precision Retrieval**: The inclusion of a Reranker significantly improves the quality of answers compared to standard vector search.\n* **Scalable Infrastructure**: Uses modular sub-workflows, allowing you to scale ingestion and deletion logic independently.\n\n## 📦 Requirements\n\n### Technical Requirements\n\n* **n8n version**: 1.19.4 or higher (for advanced LangChain nodes).\n* **Supabase Account**: With a Vector-enabled table (`rag_docs_db`).\n* **Postgres Database**: For chat memory storage.\n* **API Keys**: Google Gemini (AI), Cohere (Reranking).\n\n### Credentials & Authentication\n\n| Credential Name | Service | Purpose |\n| --- | --- | --- |\n| `googlePalmApi` | Google AI Studio | Powers Gemini 2.5 Flash and Embeddings. |\n| `googleDriveOAuth2Api` | Google Cloud | Access to monitor and read Drive files. |\n| `supabaseApi` | Supabase | Vector storage and retrieval. |\n| `postgres` | Postgres DB | Chat history persistence. |\n| `cohereApi` | Cohere | Document reranking for accuracy. |\n\n### API & Rate Limits\n\n* **Google Gemini**: Standard tier allows ~15 RPM (Requests Per Minute). Flash models are highly efficient.\n* **Cohere**: Trial keys are limited to 100 searches per month; production keys are recommended for high traffic.\n* **Supabase**: Free tier supports up to 500MB of storage, which fits thousands of document chunks.\n\n## 🔧 Setup Instructions\n\n### Step 1: External Database Setup\n\n1. **Supabase**: Create a project. In the SQL Editor, enable the `pgvector` extension and create a table named `rag_docs_db` with columns for `content`, `embedding` (vector type), and `metadata`.\n2. **Postgres**: Ensure you have a standard Postgres instance and create a table for chat history (n8n usually handles table creation if permissions allow).\n\n### Step 2: Google Drive Preparation\n\n1. Create a folder in Google Drive named `RAG Knowledge Base`.\n2. Note the **Folder ID** (the string at the end of the URL).\n\n### Step 3: n8n Node Configuration\n\n1. **AI Agent**: Paste the \"Core Identity\" instructions into the `System Message` parameter.\n2. **Google Drive Triggers**: Set the `Folder to Watch` to your specific folder ID.\n3. **Sub-workflows**: Ensure you have the following sub-workflows created and published:\n* `Supabase RAG Google Drive Files Ingest`\n* `Supabase RAG Google Drive Files Update`\n* `Supabase RAG Google Drive Files Delete`\n* `Supabase RAG Chat History Delete`\n\n\n\n### Step 4: Testing & Activation\n\n1. Click **Execute Workflow**.\n2. Upload a test document (e.g., `company_policy.pdf`) to your Google Drive folder.\n3. Check n8n **Executions** to confirm the Ingest sub-workflow was triggered.\n4. Use the n8n Chat Window to ask a question about the document.\n\n## 🚀 Usage Instructions\n\nOnce deployed, interactions happen via the n8n chat interface or a connected frontend (like a website widget).\n\n* **Adding Knowledge**: Simply upload files to the synced Google Drive folder.\n* **Monitoring**: Check the `Executions` tab in n8n. If the AI gives an \"I don't know\" equivalent, check the `Supabase Vector Database` node output to see if documents were retrieved.\n\n## 🔒 Security & Compliance\n\n### Security Considerations\n\n* **Credential Storage**: All API keys are encrypted within n8n.\n* **Scoped Access**: Use a Google Service Account or restricted OAuth scope that only has access to the specific \"RAG Knowledge Base\" folder, not your entire Drive.\n\n### Data Privacy\n\n* **PII**: Document content is sent to Google Gemini for processing and Cohere for reranking. Avoid uploading highly sensitive personal data unless using enterprise/HIPAA-compliant versions of these APIs.\n\n## ⚠️ Troubleshooting\n\n| Issue | Cause | Solution |\n| --- | --- | --- |\n| AI \"Hallucinating\" | Context window too small or no data found | Increase `topK` in Supabase node or check if embeddings were generated correctly. |\n| Memory not working | Postgres `sessionKey` mismatch | Ensure the key uses `{{ $workflow.id+$execution.id }}` or a consistent User ID. |\n| Sync not triggering | Webhook/Polling delay | Google Drive triggers in n8n poll every minute. Wait 60 seconds for the sync to start. |\n\n## 🔄 Maintenance & Optimization\n\n* **Optimization**: Use the **Gemini 2.5 Flash Lite** model (included in the workflow) for simpler queries to save on API costs and reduce latency.\n* **Maintenance**: Review the Postgres chat memory table monthly to ensure the \"Delete Schedule\" is working correctly to manage table size.\n\n",
+        "height": 3104,
+        "width": 992,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        768,
+        704
+      ],
+      "typeVersion": 1,
+      "id": "c559fffd-a09a-48b9-8201-7decd9bace48",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "modelName": "embed-multilingual-v2.0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+      "typeVersion": 1,
+      "position": [
+        3024,
+        2352
+      ],
+      "id": "18998d03-bd63-4835-aaaf-adf01b212ca0",
+      "name": "Embeddings Cohere",
+      "retryOnFail": true,
+      "credentials": {
+        "cohereApi": {
+          "id": "RK2Mg5h54cONPw1C",
+          "name": "Dev _ n8n Cohere account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "auto/best-free",
+          "mode": "list",
+          "cachedResultName": "auto/best-free"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2640,
+        2144
+      ],
+      "id": "25e809a1-643c-49dc-a8db-25335c3865d1",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "YABto1GIEHzMMZ4I",
+          "name": "Dev _ n8n Omniroute account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Database": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reranker Cohere": {
+      "ai_reranker": [
+        [
+          {
+            "node": "Supabase Vector Database",
+            "type": "ai_reranker",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Embeddings Cohere": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Database",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Vsyj4lPuDw5RGiAq",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "6e250091-5c7d-4418-9991-ad4513816851",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c585f2620b1e811fa88e890c331ab057400f88adebd1d8bd64feeac19ecaec8"
+  },
+  "nodeGroups": [],
+  "id": "5piq1kXKudoWEP6T",
+  "tags": [
+    {
+      "updatedAt": "2026-08-07T10:30:45.435Z",
+      "createdAt": "2026-05-16T12:55:37.724Z",
+      "id": "uSNTXipxQbvF4Txs",
+      "name": "Main Workflow"
+    },
+    {
+      "updatedAt": "2026-05-29T13:32:11.906Z",
+      "createdAt": "2026-05-29T13:32:11.906Z",
+      "id": "PxKxaRZC17gArkXW",
+      "name": "Chatbot"
+    },
+    {
+      "updatedAt": "2026-05-29T13:33:10.024Z",
+      "createdAt": "2026-05-29T13:33:10.024Z",
+      "id": "MZSmpIv1lSCq0IgB",
+      "name": "RAG"
+    },
+    {
+      "updatedAt": "2026-05-29T13:34:12.166Z",
+      "createdAt": "2026-05-29T13:34:12.166Z",
+      "id": "hyci9TRRA0lGv2Zg",
+      "name": "Supabase"
+    }
+  ]
+}

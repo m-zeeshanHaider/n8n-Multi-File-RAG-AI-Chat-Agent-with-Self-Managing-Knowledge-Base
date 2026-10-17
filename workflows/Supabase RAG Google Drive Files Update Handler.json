@@ -1,0 +1,144 @@
+{
+  "name": "Supabase RAG Google Drive Files Update Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "14YijJWlexheR1CfV9NYprlrj3Sgw7NkZ",
+          "mode": "id"
+        },
+        "event": "fileUpdated",
+        "options": {
+          "fileType": "all"
+        }
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        -112
+      ],
+      "id": "711e81a8-08f7-40d3-8571-b25b3bcdbf35",
+      "name": "Files Update Google Drive Trigger",
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Y3qqfcVslftdJ3Lv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Y3qqfcVslftdJ3Lv",
+          "cachedResultName": "Sub-Workflow __ Supabase RAG Google Drive Files Update"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        144,
+        -112
+      ],
+      "id": "c1143a3b-c330-4f9a-93ac-d5af4b7e8187",
+      "name": "Call 'Sub-Workflow __ Supabase RAG Google Drive Files Update'",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        -112
+      ],
+      "id": "88e37020-7667-4455-aae9-54d23138cd20",
+      "name": "Edit Fields",
+      "retryOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Files Update Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Call 'Sub-Workflow __ Supabase RAG Google Drive Files Update'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Vsyj4lPuDw5RGiAq",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "872d379d-3069-45ef-81f2-1af4b947e1fe",
+  "meta": {
+    "instanceId": "5c585f2620b1e811fa88e890c331ab057400f88adebd1d8bd64feeac19ecaec8"
+  },
+  "nodeGroups": [],
+  "id": "VJHcFGMRV3fMZLBY",
+  "tags": [
+    {
+      "updatedAt": "2026-05-29T13:33:10.024Z",
+      "createdAt": "2026-05-29T13:33:10.024Z",
+      "id": "MZSmpIv1lSCq0IgB",
+      "name": "RAG"
+    },
+    {
+      "updatedAt": "2026-05-29T13:34:12.166Z",
+      "createdAt": "2026-05-29T13:34:12.166Z",
+      "id": "hyci9TRRA0lGv2Zg",
+      "name": "Supabase"
+    },
+    {
+      "updatedAt": "2026-08-07T10:30:45.435Z",
+      "createdAt": "2026-05-16T12:55:37.724Z",
+      "id": "uSNTXipxQbvF4Txs",
+      "name": "Main Workflow"
+    }
+  ]
+}

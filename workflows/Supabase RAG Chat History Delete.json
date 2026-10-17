@@ -1,0 +1,268 @@
+{
+  "name": "Supabase RAG Chat History Delete",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "n8n_chat_histories",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        1520
+      ],
+      "id": "4f315f61-aaf5-4e57-b55b-a5d70034939d",
+      "name": "Get many rows",
+      "retryOnFail": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "u1PQ7Q8KRIufKLPd",
+          "name": "Dev _ Sasha Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7d84f902-6b7c-43b4-b6f6-f3134117cf7c",
+              "name": "daysPassed",
+              "value": "={{ $now.toUTC().diffTo($json.time, 'days').floor() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        1520
+      ],
+      "id": "ffbcb179-d700-4673-bb05-36ad92affa0b",
+      "name": "Edit Fields",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5f4a9af5-9588-409d-a65b-46dc0c521c45",
+              "leftValue": "={{ $json.daysPassed }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        1520
+      ],
+      "id": "75ba8026-47ef-4646-8045-92ad40a7d407",
+      "name": "Filter",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2464,
+        1520
+      ],
+      "id": "13bcaf93-8453-4249-8d6d-278cbfea7b1d",
+      "name": "Loop Over Items",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "n8n_chat_histories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        1520
+      ],
+      "id": "ac8f2386-0185-4f39-b8ea-25f08bc0207f",
+      "name": "Delete a row",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "u1PQ7Q8KRIufKLPd",
+          "name": "Dev _ Sasha Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        1520
+      ],
+      "id": "a7db5ae5-7f39-4a2a-b565-559d252f4cfb",
+      "name": "When Executed by Another Workflow",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "content": "# Supabase Chat History Cleanup - Complete Documentation\n\n## 📋 Overview\n\nThe **Supabase Chat History Cleanup** workflow is a specialized utility designed to manage database storage and data privacy by automatically purging outdated chat records. It connects to a Supabase instance, evaluates the age of entries in a specific table, and deletes records that exceed a defined retention threshold (currently set to 1 day).\n\nThis workflow functions as a \"Sub-workflow,\" meaning it is designed to be triggered by a parent process—such as a daily Cron scheduler—to ensure routine maintenance without manual intervention. By automating the deletion of old chat logs, it helps maintain database performance and assists in compliance with data retention policies.\n\n## 👥 Who Is This Workflow For?\n\n* **AI Developers** using Supabase to store chat history for LLM applications.\n* **Database Administrators** looking to automate table maintenance and prevent storage bloat.\n* **Privacy Officers** ensuring that user chat data is not retained longer than legally or operationally necessary.\n* **n8n Developers** requiring a reusable cleanup module for different environments.\n\n## 🎯 Problem Statement\n\nApplications that store chat logs often face three primary challenges:\n\n1. **Storage Costs**: Unchecked growth of chat logs leads to increased Supabase storage costs and potential performance degradation during indexing.\n2. **Data Privacy**: Retaining chat history indefinitely can violate GDPR or internal data privacy policies regarding \"purpose limitation\" and \"storage limitation.\"\n3. **Manual Overhead**: Manually running SQL delete scripts is error-prone and often forgotten.\n\nThis workflow eliminates these issues by providing a reliable, automated, and logic-based deletion mechanism.\n\n## ⚙️ How This Workflow Works\n\nThe workflow operates in a linear sequence with a controlled loop for safe deletion:\n\n1. **Trigger (Execute Workflow Trigger)**: The workflow sits idle until called by a parent workflow. It accepts no specific input data, acting as a standalone signal to start the cleanup.\n2. **Data Retrieval (Supabase Node - Get many rows)**: It queries the `n8n_chat_histories` table in Supabase to fetch all existing records.\n3. **Date Calculation (Set Node - Edit Fields)**: For every record retrieved, n8n calculates the difference between the current time (`$now`) and the record's timestamp (`$json.time`). It creates a new field, `daysPassed`, using the formula: `$now.toUTC().diffTo($json.time, 'days').floor()`.\n4. **Filtering (Filter Node)**: The workflow checks if `daysPassed` is **greater than or equal to 1**. Only records older than 24 hours pass through to the next stage.\n5. **Batch Processing (Split In Batches Node)**: To prevent hitting API rate limits or timing out on large datasets, the records are processed one by one (or in small batches) through a loop.\n6. **Targeted Deletion (Supabase Node - Delete a row)**: For each record identified by the filter, the workflow sends a delete request to Supabase using the unique `id`.\n7. **Loop Completion**: Once all filtered records are deleted, the loop finishes and the workflow terminates.\n\n## ✨ Key Benefits\n\n* **Automated Retention**: Ensures your `n8n_chat_histories` table never grows beyond a 24-hour window.\n* **Improved Performance**: Smaller tables lead to faster queries and more efficient indexing within Supabase.\n* **Cost Management**: Minimizes database storage usage, staying well within Supabase's free or lower-tier limits.\n* **Error Resilience**: Includes \"Retry on Fail\" settings for every node to handle temporary network blips or API timeouts.\n\n## 📦 Requirements\n\n### Technical Requirements\n\n* **n8n version**: 1.0 or higher.\n* **Required n8n nodes**: `Supabase`, `Set` (v3), `Filter`, `Split In Batches`, `Execute Workflow Trigger`.\n* **External service**: A Supabase project with an existing table named `n8n_chat_histories`.\n\n### Credentials & Authentication\n\n#### Supabase API\n\n* **Credential Name**: Sasha Supabase account (or your custom name).\n* **How to obtain**:\n1. Go to your **Supabase Project Settings** > **API**.\n2. Copy the **Project URL**.\n3. Copy the **service_role** secret (Required for Delete operations).\n\n\n* **Required Permissions**: The `service_role` key is necessary to bypass Row Level Security (RLS) and perform deletions.\n\n### API & Rate Limits\n\n* **Supabase API**: Default limits are quite generous (thousands of requests per minute), but the use of the `Split In Batches` node ensures the workflow remains stable even if deleting hundreds of rows.\n* **n8n Memory**: Processing \"all rows\" in memory may require instance adjustment if your chat history exceeds 50,000+ rows daily.\n\n## 🔧 Setup Instructions\n\n### Step 1: Prepare the Supabase Table\n\nEnsure your table `n8n_chat_histories` has at least the following columns:\n\n* `id`: (UUID or Integer) Primary Key.\n* `time`: (Timestamp) The creation date of the chat entry.\n\n### Step 2: Configure Credentials\n\n1. In n8n, go to **Credentials** > **New**.\n2. Search for **Supabase API**.\n3. Input your **Host** (Project URL) and **API Key** (`service_role` key).\n\n### Step 3: Workflow Import\n\n1. Copy the JSON provided in the request.\n2. In n8n, click **Workflows** > **New**.\n3. Press `Ctrl+V` (or `Cmd+V`) to paste the nodes directly into the canvas.\n\n### Step 4: Node Configuration\n\n* **Get many rows**: Ensure `Table ID` is set to `n8n_chat_histories`.\n* **Edit Fields**: The expression `{{ $now.toUTC().diffTo($json.time, 'days').floor() }}` assumes your date column is named `time`. If your column is named `created_at`, update the expression accordingly.\n* **Filter**: The value `1` represents 24 hours. Change this to `7` for a weekly cleanup.\n\n### Step 5: Testing & Activation\n\n1. Click **Execute Workflow**.\n2. Verify in your Supabase dashboard that rows older than 1 day are removed.\n3. Save the workflow.\n\n## 🚀 Usage Instructions\n\nThis workflow is a **Passive Worker**. To use it:\n\n1. Create a **Parent Workflow**.\n2. Add a **Schedule Trigger** (e.g., Every day at 00:00).\n3. Add an **Execute Workflow Node** and select this cleanup workflow.\n\n## 🔒 Security & Compliance\n\n### Security Considerations\n\n⚠️ **Warning**: This workflow uses the Supabase `service_role` key. This key bypasses all security policies.\n\n* Ensure only authorized n8n users can edit this workflow.\n* Never log the full `$json` output in production if it contains sensitive user messages.\n\n### Data Privacy\n\n* **GDPR**: This workflow supports the \"Right to Erasure\" and \"Storage Limitation\" principles by ensuring data is not kept longer than necessary.\n* **Data Transmission**: Data is pulled from Supabase to n8n for processing and then a delete command is sent back. Use an encrypted (HTTPS) n8n connection.\n\n## ⚠️ Troubleshooting\n\n| Issue | Cause | Solution |\n| --- | --- | --- |\n| `daysPassed` is NaN | `time` field format is invalid | Ensure Supabase `time` is a valid ISO8601 timestamp. |\n| Deletion fails (403/401) | Incorrect API Key | Use the `service_role` key, not the `anon` key. |\n| Workflow times out | Too many rows to delete | Increase the batch size in the `Split In Batches` node to 50. |\n\n## 🔄 Maintenance & Optimization\n\n* **Monthly**: Verify the `n8n_chat_histories` table hasn't changed schema.\n* **Optimization**: If deleting thousands of rows, replace the loop with a single **Supabase Custom SQL** node:\n`DELETE FROM n8n_chat_histories WHERE time < NOW() - INTERVAL '1 day';`\n\n",
+        "height": 2592,
+        "width": 1104,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "cd3ca0a4-6d97-476a-bada-01a2858c6622",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Delete a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete a row": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Vsyj4lPuDw5RGiAq",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "eee26690-dd56-4e6c-9f6d-6d7dd69531f1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c585f2620b1e811fa88e890c331ab057400f88adebd1d8bd64feeac19ecaec8"
+  },
+  "nodeGroups": [],
+  "id": "dhMdx7aVpeXcC4CB",
+  "tags": [
+    {
+      "updatedAt": "2026-05-29T13:33:10.024Z",
+      "createdAt": "2026-05-29T13:33:10.024Z",
+      "id": "MZSmpIv1lSCq0IgB",
+      "name": "RAG"
+    },
+    {
+      "updatedAt": "2026-05-29T13:34:12.166Z",
+      "createdAt": "2026-05-29T13:34:12.166Z",
+      "id": "hyci9TRRA0lGv2Zg",
+      "name": "Supabase"
+    },
+    {
+      "updatedAt": "2026-08-07T10:30:54.966Z",
+      "createdAt": "2026-05-16T12:51:40.286Z",
+      "id": "kV35B1Fu4iKfjxoJ",
+      "name": "Sub Workflow"
+    }
+  ]
+}

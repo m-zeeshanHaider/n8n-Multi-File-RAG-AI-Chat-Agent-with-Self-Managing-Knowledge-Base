@@ -1,0 +1,2235 @@
+{
+  "name": "Supabase RAG Google Drive Files Ingest",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        6896,
+        1488
+      ],
+      "id": "c0c635e3-283e-4d84-a05a-c51b8a1607b2",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "oaOoORThgJG8STJp",
+          "name": "Dev _ Sasha Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "destinationKey": "fileBase64",
+        "options": {
+          "encoding": "base64"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        5600,
+        160
+      ],
+      "id": "622d6adb-3dd0-4d11-b8dd-1b1ae64cd33c",
+      "name": "Convert to base64",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all file extension\nconst fileExtension = $('Loop Over New Files').first().json.fileExtension.toLowerCase();\n// $json.fullFileExtension.toLowerCase();\n// Comprehensive file extension mappings\nconst fileCategories = {\n\n  pdf: [\n    'pdf'\n  ],\n    \n  image: [\n    'jpeg', 'png', 'webp', 'heic', 'heif'\n  ],\n  \n  audio: [\n    'mp3', 'wav', 'aiff', 'aac', 'ogg', 'flac',\n  ],\n  \n  video: [\n    'mp4', 'mpeg', 'mov', 'avi', 'x-flv', 'flv', 'mpg',\n    'webm', 'wmv', '3gpp'\n  ]\n};\n\n// Function to categorize file\nfunction categorizeFile(extension) {\n  for (const [category, extensions] of Object.entries(fileCategories)) {\n    if (extensions.includes(extension)) {\n      return category;\n    }\n  }\n  return 'other';\n}\n  \n  const category = categorizeFile(fileExtension);\n  \n  return {\n    json: {\n      category: category,\n      extension: fileExtension,\n    },\n  };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2864,
+        832
+      ],
+      "id": "51daa589-61ac-49f1-a49f-53f3ccece13b",
+      "name": "Categorize File",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c2203f3b-d792-424c-acc2-8248f8bbe954",
+              "name": "=infoExtractPrompt",
+              "value": "=You are an expert File Content Extractor specialized in preparing content for Retrieval-Augmented Generation (RAG) systems. Your primary directive is to read any provided file in its entirety, extract every piece of relevant information, and compile it into a single, comprehensive, naturally flowing paragraph of plain text that preserves all semantic content, context, and metadata while eliminating all formatting structures.\n\n# File information\n1. Name: {{ $('Loop Over New Files').item.json.name }}\n2. Category: {{ $json.category }}\n3. Extension: {{ $json.extension }}\n\n# Step-by-Step Operational Protocol\n1. Identify the File Type and Name: Immediately upon receiving the file, determine its type (e.g., image, PDF, text document, spreadsheet, code file, presentation) and name. You MUST begin your output with this identification in the exact format: \"This is a [file type] named [filename].\"\n\n\n2. Perform a Complete Content Scan: Read the entire file from beginning to end. Do not skip any sections, footnotes, captions, headers, or metadata. Your scan must be exhaustive and systematic.\n\n\n3. Extract All Information Categories: Capture every type of information present, including but not limited to:\n\n\n- Primary textual content (body text, paragraphs, sentences)\n- Metadata (author, date, title, source, version)\n- Structural information (section topics, hierarchies, relationships)\n- Data points (numbers, statistics, measurements, dates)\n- Visual descriptions (for images: objects, people, scenes, text in images, colors, composition)\n- Tables and lists (convert to natural language descriptions)\n- Code snippets (describe purpose and key logic)\n- Contextual clues (tone, purpose, intended audience)\n4. Synthesize into Continuous Prose: Transform all extracted information into a single, unbroken paragraph. The paragraph must flow naturally as if written by a human narrator describing the file's contents. Use transitional phrases and logical sequencing.\n\n\n5. Eliminate All Formatting Artifacts: Remove every instance of bullets, numbering, special characters used for formatting, markdown symbols, asterisks, dashes used as list markers, and any structural notation. The output must be pure prose.\n\n\n6. Verify Completeness: Before finalizing, mentally cross-check that no significant information has been omitted. Ensure all context that would aid a RAG system in understanding or retrieving this content is present.\n\n# Rules & Constraints\n1. You MUST begin your output with \"This is a [file type] named [filename]\" without exception.\n2. You MUST produce exactly ONE continuous paragraph. No line breaks, no bullet points, no numbered lists, no section divisions.\n3. You MUST NOT use any special characters for formatting purposes, including but not limited to: *, -, •, #, >, |, _, ~, or any markdown syntax.\n4. You MUST NOT invent, assume, or hallucinate information that is not explicitly present in the file. If something is unclear, describe it as \"unclear\" or \"ambiguous\" rather than guessing.\n5. You MUST maintain factual accuracy. Every detail must be verifiable against the source file.\n6. You MUST capture ALL information, not just what seems important. In RAG systems, seemingly minor details can be crucial for retrieval.\n7. You MUST write in clear, grammatically correct, natural English that flows logically from one idea to the next.\n8. You MUST preserve the semantic meaning and relationships between pieces of information, even while removing structural formatting.\n9. You MUST NOT apologize, explain your process, or add meta-commentary. Output only the extracted content paragraph.\n10. If the file contains multiple distinct topics or sections, you must still integrate them into a single flowing paragraph using appropriate transitions.\n\n# Output Format & Stylistic Guidelines\n1. Structure: One single, continuous paragraph with no line breaks except at the very end.\n2. Opening: Always start with \"This is a [file type] named [filename]\" followed immediately by the content description.\n3. Tone: Neutral, factual, and descriptive. Maintain the informational tone appropriate for RAG system ingestion.\n4. Flow: Use transitional phrases like \"additionally,\" \"furthermore,\" \"the document also mentions,\" \"in terms of,\" \"regarding,\" to create smooth connections between different pieces of information.\n5. Density: Maximize information density while maintaining readability. Every sentence should convey meaningful content.\n6. Length: The paragraph should be as long as necessary to capture all information. Do not artificially limit length for brevity.\n\n# Examples\nExample 1: Text Document Extraction\nUser Input: [Provides a file: \"quarterly_sales_report.pdf\" containing sections on Q1 performance, regional breakdowns, and future projections]\nGood Example: \"This is a PDF document named quarterly_sales_report.pdf, which presents a comprehensive analysis of the company's first quarter sales performance for the fiscal year 2024. The report opens with an executive summary indicating that total revenue reached 4.2 million dollars, representing a 15 percent increase compared to the same quarter in the previous year. The document breaks down performance by geographic region, noting that the North American division contributed 2.1 million dollars with strong growth in the technology sector, while the European division generated 1.5 million dollars despite challenges in the retail market. The Asia-Pacific region accounted for 600,000 dollars, with emerging opportunities in e-commerce noted as a key driver. The report includes a section on product category performance showing that software licenses comprised 45 percent of total revenue, consulting services made up 30 percent, and hardware sales accounted for the remaining 25 percent. Future projections for Q2 estimate potential revenue between 4.5 and 4.8 million dollars, contingent on successful product launches scheduled for April and the resolution of supply chain constraints affecting hardware delivery. The document concludes with strategic recommendations, including increased marketing investment in the Asia-Pacific region, expanded partnerships with regional distributors, and the development of subscription-based service offerings to improve revenue predictability.\"\n[Annotation: This example is effective because it begins with proper file identification, captures all quantitative data, preserves relationships between metrics, flows naturally through topics, uses no formatting characters, and maintains information density throughout.]\nBad Example: \"This is a quarterly sales report. It talks about sales in Q1. There were different regions mentioned. Some numbers were included about revenue. The report had recommendations at the end.\"\n[Annotation: This example fails because it is vague, omits specific data points, lacks detail about regional breakdown, provides no actual numbers, loses contextual information, and is insufficiently comprehensive for the RAG system utility.]\n\nExample 2: Image File Extraction\nUser Input: [Provides an image file: \"infographic_climate_data.png\" showing a colorful chart with temperature trends, CO2 levels, and ice cap measurements]\nGood Example: \"This is an image named infographic_climate_data.png, which presents a visual infographic displaying global climate change data spanning from 1950 to 2023. The image features a prominent line graph occupying the upper two-thirds of the composition with a blue axis showing global average temperature increase measured in degrees Celsius, demonstrating a rise from 13.8 degrees in 1950 to 15.2 degrees in 2023, with particularly steep increases occurring after 1980. A secondary red line on the same graph tracks atmospheric carbon dioxide concentration measured in parts per million, beginning at 310 ppm in 1950 and reaching 420 ppm in 2023. The lower section of the infographic contains three circular icons with accompanying statistics: the first icon depicts a polar bear on an ice floe with text indicating Arctic sea ice has decreased by 13 percent per decade since 1979, the second icon shows a thermometer with text stating that the ten warmest years on record have all occurred since 2010, and the third icon displays a factory smokestack with text noting that global CO2 emissions reached 36.8 billion metric tons in 2023. The color scheme employs blues and whites for temperature-related data, reds and oranges for emissions data, and uses a clean sans-serif font throughout. A footer credits the data sources as NASA, NOAA, and the IPCC, and includes a small logo for an environmental organization called Climate Action Now.\"\n[Annotation: This example succeeds by identifying the file type and name, describing both visual elements and textual data, capturing all numerical values, explaining the layout and composition, noting color choices that convey meaning, and preserving source attributions—all in flowing prose without formatting.]\nBad Example: \"This is an image named infographic_climate_data.png showing:\n- The temperature graph is going up\n- CO2 levels are rising\n- Some facts about ice and polar bears. The image has charts and uses blue and red colors.\"\n[Annotation: This example fails critically by using bullet points despite explicit prohibition, providing insufficient quantitative detail, omitting specific measurements and dates, lacking a description of layout and visual hierarchy, and being too sparse for effective RAG retrieval.]",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3168,
+        832
+      ],
+      "id": "596350fa-105e-4b35-bd77-19361facb7ac",
+      "name": "Prompt to Extract Info",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2848,
+        1824
+      ],
+      "id": "2ae3dd0c-ecd9-40e4-be8a-da661d615816",
+      "name": "Google File API: Get Uploaded Files",
+      "retryOnFail": true,
+      "alwaysOutputData": false,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/{{ $json.files[0].name }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3888,
+        1840
+      ],
+      "id": "aaaf860a-416f-4212-8148-410826ee4259",
+      "name": "Google File API: Delete Uploaded Files",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/upload/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Protocol",
+              "value": "resumable"
+            },
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "start"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Type",
+              "value": "={{ $('Loop Over New Files').item.json.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"file\": {\n    \"display_name\": \"{{ $('Loop Over New Files').item.json.originalFilename }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        4800,
+        1248
+      ],
+      "id": "35a83ba2-1e5e-4922-a52c-b908c301abdf",
+      "name": "Google File API: Defining Audio Metadata",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Loop Over New Files').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {}
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        5296,
+        1248
+      ],
+      "id": "5ac3616e-acfa-420c-be25-783ea56070a7",
+      "name": "Download Audio File",
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.headers['x-goog-upload-url'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Offset",
+              "value": "0"
+            },
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "upload, finalize"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        5552,
+        1248
+      ],
+      "id": "76718637-71bc-4547-ba84-8e83f862fbbd",
+      "name": "Google File API: Upload Audio File",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "start"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Type",
+              "value": "={{ $('Loop Over New Files').item.json.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n      \"parts\":[\n        {\n        \"text\": {{ $('Format to JSON String').item.json.promptToJsonString }}\n        },\n        {\n        \"file_data\": \n          {\n           \"mime_type\": \"{{ $json.file.mimeType }}\",\n           \"file_uri\": \"{{ $json.file.uri }}\"\n          }\n        }\n      ]\n    }]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        6048,
+        1248
+      ],
+      "id": "a901627d-7510-431f-8d3b-df7712c797d6",
+      "name": "Gemini: Extract Audio File Info",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "rag_docs_db",
+          "mode": "list",
+          "cachedResultName": "rag_docs_db"
+        },
+        "options": {
+          "queryName": "match_rag_docs_db"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        6320,
+        1248
+      ],
+      "id": "5791db14-ecff-4bc9-9a43-8227128e060e",
+      "name": "Audio Files Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "u1PQ7Q8KRIufKLPd",
+          "name": "Dev _ Sasha Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.candidates[0].content.parts[0].text.replace(/[\\n\\r\\t\\f\\v\\0]/g, '') }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "pointers": "={{ $json.candidates[0].content.parts[0].text }}",
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "fileId",
+                "value": "={{ $('Loop Over New Files').item.json.id }}"
+              },
+              {
+                "name": "fileName",
+                "value": "={{ $('Loop Over New Files').item.json.name }}"
+              },
+              {
+                "name": "dateAdded",
+                "value": "={{ $now }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        6128,
+        1520
+      ],
+      "id": "ae169b6b-145e-4b55-b21d-8f93c349b9e3",
+      "name": "Audio Files Data Loader"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/upload/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Protocol",
+              "value": "resumable"
+            },
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "start"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Type",
+              "value": "={{ $('Loop Over New Files').item.json.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"file\": {\n    \"display_name\": \"{{ $('Loop Over New Files').item.json.originalFilename }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        4912,
+        2048
+      ],
+      "id": "85e517fa-209e-4258-8928-2e342ec18819",
+      "name": "Google File API: Defining Video Metadata",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Loop Over New Files').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {}
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        5424,
+        2048
+      ],
+      "id": "c5f769b5-372b-469b-892d-3c0fb32b51d1",
+      "name": "Download Video File",
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.headers['x-goog-upload-url'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Offset",
+              "value": "0"
+            },
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "upload, finalize"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        5680,
+        2048
+      ],
+      "id": "0d52e7be-0637-456f-b926-b06307dbba59",
+      "name": "Google File API: Upload Video File",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "start"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Type",
+              "value": "={{ $('Loop Over New Files').item.json.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n      \"parts\":[\n        {\n        \"file_data\": \n          {\n           \"mime_type\": \"{{ $json.file.mimeType }}\",\n           \"file_uri\": \"{{ $json.file.uri }}\"\n          }\n        },\n        {\n        \"text\": {{ $('Format to JSON String').item.json.promptToJsonString }}\n        }\n      ]\n    }]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        6160,
+        2048
+      ],
+      "id": "9a2992ab-566b-425c-be01-7046d7fa18ee",
+      "name": "Gemini: Extract Video File Info",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "rag_docs_db",
+          "mode": "list",
+          "cachedResultName": "rag_docs_db"
+        },
+        "options": {
+          "queryName": "match_rag_docs_db"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        6432,
+        2048
+      ],
+      "id": "72a0299b-53e1-4131-bd59-290e1abebb10",
+      "name": "Video Files Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "u1PQ7Q8KRIufKLPd",
+          "name": "Dev _ Sasha Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.candidates[0].content.parts[0].text.replace(/[\\n\\r\\t\\f\\v\\0]/g, '') }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "pointers": "={{ $json.candidates[0].content.parts[0].text }}",
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "fileId",
+                "value": "={{ $('Loop Over New Files').item.json.id }}"
+              },
+              {
+                "name": "fileName",
+                "value": "={{ $('Loop Over New Files').item.json.name }}"
+              },
+              {
+                "name": "dateAdded",
+                "value": "={{ $now }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        6256,
+        2304
+      ],
+      "id": "7a5fa3c5-8896-4d75-b8a3-18c5727c3215",
+      "name": "Video Files Data Loader"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ae6f830f-e0ec-4048-961b-d1c9475509db",
+                    "leftValue": "={{ $('Categorize File').item.json.category }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3f0e1963-aa28-4d7e-98c0-47d989668334",
+                    "leftValue": "={{ $('Categorize File').item.json.category }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f42e7750-ed4a-4d10-8720-29f0c62f27f4",
+                    "leftValue": "={{ $('Categorize File').item.json.category }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b60244a9-ee71-48da-962e-d57cda20045a",
+                    "leftValue": "={{ $('Categorize File').item.json.category }}",
+                    "rightValue": "video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ffad1021-b5a3-48d7-a417-0ac19cae32af",
+                    "leftValue": "={{ $('Categorize File').item.json.category }}",
+                    "rightValue": "other",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        3904,
+        784
+      ],
+      "id": "a5cda3fd-0097-48ce-ac06-6f52ef43e1d8",
+      "name": "Switch for Different Files",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Loop Over New Files').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        5120,
+        160
+      ],
+      "id": "f9eff751-ab5c-4fa9-aeab-015740a81bd6",
+      "name": "Download Image or PDF File",
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/upload/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Protocol",
+              "value": "resumable"
+            },
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "start"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Type",
+              "value": "={{ $('Loop Over New Files').item.json.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"file\": {\n    \"display_name\": \"{{ $('Loop Over New Files').item.json.originalFilename }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        4832,
+        480
+      ],
+      "id": "1c4f4e18-f6e8-4ad2-85b2-954a38880588",
+      "name": "Google File API: Defining Image or PDF Metadata",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"inline_data\": {\n            \"mime_type\": \"{{ $('Loop Over New Files').item.json.mimeType }}\",\n            \"data\": \"{{ $json.fileBase64 }}\"\n          }\n        },\n        {\n          \"text\": {{ $('Format to JSON String').item.json.promptToJsonString }}\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        6112,
+        160
+      ],
+      "id": "acbfa794-6614-4589-a71d-58f4357c197c",
+      "name": "Gemini: Extract Image or PDF File Info",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "rag_docs_db",
+          "mode": "list",
+          "cachedResultName": "rag_docs_db"
+        },
+        "options": {
+          "queryName": "match_rag_docs_db"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        6608,
+        160
+      ],
+      "id": "0cbdce71-3cd3-4e57-8815-65b145d9f33f",
+      "name": "Image or PDF Files Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "u1PQ7Q8KRIufKLPd",
+          "name": "Dev _ Sasha Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.candidates[0].content.parts[0].text.replace(/[\\n\\r\\t\\f\\v\\0]/g, '') }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "pointers": "={{ $json.candidates[0].content.parts[0].text }}",
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "fileId",
+                "value": "={{ $('Loop Over New Files').item.json.id }}"
+              },
+              {
+                "name": "fileName",
+                "value": "={{ $('Loop Over New Files').item.json.name }}"
+              },
+              {
+                "name": "dateAdded",
+                "value": "={{ $now }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        6816,
+        384
+      ],
+      "id": "57c18246-6e4b-4e95-87d6-41eda71567d9",
+      "name": "Image or PDF Files Data Loader"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Loop Over New Files').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {}
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        5360,
+        480
+      ],
+      "id": "8daadd06-2ec1-4c61-9126-cf010cfc26db",
+      "name": "Download Large Image or PDF File",
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.headers['x-goog-upload-url'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Offset",
+              "value": "0"
+            },
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "upload, finalize"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        5600,
+        480
+      ],
+      "id": "a2b2542a-04ad-4f11-902a-299c24a2534a",
+      "name": "Google File API: Upload Image or PDF File",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "start"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Length",
+              "value": "={{ $('Loop Over New Files').item.json.size }}"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Type",
+              "value": "={{ $('Loop Over New Files').item.json.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n      \"parts\":[\n        {\n        \"text\": {{ $('Format to JSON String').item.json.promptToJsonString }}\n        },\n        {\n        \"file_data\": \n          {\n           \"mime_type\": \"{{ $json.file.mimeType }}\",\n           \"file_uri\": \"{{ $json.file.uri }}\"\n          }\n        }\n      ]\n    }]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        6064,
+        480
+      ],
+      "id": "94af9473-70bb-4659-9d38-2a731bf62782",
+      "name": "Gemini: Extract Large Image or PDF File Info",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IrZgTqoxI1Ljjc8H",
+          "name": "Dev _ Sasha Google Gemini API Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "rag_docs_db",
+          "mode": "list",
+          "cachedResultName": "rag_docs_db"
+        },
+        "options": {
+          "queryName": "match_rag_docs_db"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        6336,
+        480
+      ],
+      "id": "360b39b8-c5fa-4d04-b498-845bbeb85e08",
+      "name": "Large Files Image or PDF Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "u1PQ7Q8KRIufKLPd",
+          "name": "Dev _ Sasha Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.candidates[0].content.parts[0].text.replace(/[\\n\\r\\t\\f\\v\\0]/g, '') }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "pointers": "={{ $json.candidates[0].content.parts[0].text }}",
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "fileId",
+                "value": "={{ $('Loop Over New Files').item.json.id }}"
+              },
+              {
+                "name": "fileName",
+                "value": "={{ $('Loop Over New Files').item.json.name }}"
+              },
+              {
+                "name": "dateAdded",
+                "value": "={{ $now }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        6112,
+        768
+      ],
+      "id": "3485d68a-616b-41ce-b927-00e659b1f9ae",
+      "name": "Large Image or PDF Files Data Loader"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f11c815f-d3f6-4b85-a29a-e084d0f4bfea",
+              "leftValue": "={{ $json.size.toNumber() }}",
+              "rightValue": 2147483648,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2480,
+        848
+      ],
+      "id": "34336020-21b2-4ec2-9d7a-8283f85ee6cf",
+      "name": "If File Size < 2 GB",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8ca44048-b5cf-4599-b654-2bb78312449c",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        3328,
+        1824
+      ],
+      "id": "0b2b121a-f78d-4769-94cc-730ba425ad36",
+      "name": "If Items Exists",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b38aff3d-c2a9-4a4b-bdc4-abc01990a6d4",
+              "leftValue": "={{ $('Loop Over New Files').item.json.size.toNumber() }}",
+              "rightValue": 5242880,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4496,
+        176
+      ],
+      "id": "375d5811-191d-4f7a-bd24-6ab1b82e31b4",
+      "name": "If Image or PDF Size < 5 MB",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        6912,
+        592
+      ],
+      "id": "d036e400-f3bd-4b14-a76f-f1bafeb040b4",
+      "name": "Image or PDF Files Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 200
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+      "typeVersion": 1,
+      "position": [
+        6224,
+        1728
+      ],
+      "id": "a5615e8e-4406-42dc-b35f-4a74066e9f02",
+      "name": "Audio Files Token Splitter"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 200
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+      "typeVersion": 1,
+      "position": [
+        6352,
+        2512
+      ],
+      "id": "cce08193-6d31-4215-b9be-c8bf09cbad39",
+      "name": "Video Files Token Splitter"
+    },
+    {
+      "parameters": {
+        "separator": ".",
+        "chunkOverlap": 200
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        6208,
+        976
+      ],
+      "id": "66c0b5ce-7b0b-4b65-be7a-1743bf8d5ab2",
+      "name": "Large Image or PDF Files Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f1776063-f885-4508-989e-330523018d1c",
+              "leftValue": "={{ $('Categorize File').item.json.category }}",
+              "rightValue": "document",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "45b919ef-1993-4345-adab-26c4e557bef7",
+              "leftValue": "={{ $('New File RAG Sub-Workflow').item.json.size.toNumber() }}",
+              "rightValue": 5242880,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "63675c69-3266-47d2-a1f1-867e2cdabc80",
+              "leftValue": "={{ $('New File RAG Sub-Workflow').item.json.size.toNumber() }}",
+              "rightValue": 2147483648,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2416,
+        1568
+      ],
+      "id": "7f150c29-05c3-449c-9e9a-33c2790f30cc",
+      "name": "If Not Document & Size > 5MB",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3456,
+        1136
+      ],
+      "id": "383bd43f-e9ff-477b-894a-1e4fb0f0b462",
+      "name": "Wait 5 sec after Delete",
+      "webhookId": "a4895cb3-a9de-4555-9739-2ecd27fe6982",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        4176,
+        1840
+      ],
+      "id": "3cc6bd78-8d26-4f5a-b628-9a4bf271b875",
+      "name": "Wait 5 sec after Delete using Google File API",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "const promptToJsonString = JSON.stringify($input.first().json.infoExtractPrompt);\n\nreturn [{promptToJsonString}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3488,
+        832
+      ],
+      "id": "44c22a58-4045-4fb0-b8d6-15c744533eaf",
+      "name": "Format to JSON String",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Loop Over New Files').item.json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3168,
+        1136
+      ],
+      "id": "80acd4ba-2ec5-4eba-b90e-97795a9d0fba",
+      "name": "Google Drive API: Delete Uploaded File",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "DOav4XRZuhZOljS6",
+          "name": "Dev _ Sasha Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3888,
+        1584
+      ],
+      "id": "2384c9fe-018e-4fec-a6af-7329ef1d0d53",
+      "name": "No Operation after Loop End",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1840,
+        832
+      ],
+      "id": "0063f486-2568-4b44-8c0b-a30ad4a01336",
+      "name": "New File RAG Sub-Workflow",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "batchSize": "=1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2144,
+        832
+      ],
+      "id": "3883510b-e1f3-491f-9109-8595ab79c5d5",
+      "name": "Loop Over New Files",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        3600,
+        1824
+      ],
+      "id": "17ac4eb3-e356-4ea2-aeb1-b939caf34ccf",
+      "name": "Loop Over Uploaded Files",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3088,
+        1824
+      ],
+      "id": "8676cb94-5e55-43cc-9573-e02811e2305e",
+      "name": "Wait 5 sec after getting Uploaded Files",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5104,
+        480
+      ],
+      "id": "d4105136-d7bd-4139-8c52-2a5f5086b87a",
+      "name": "Wait 5 sec after defining Metadata",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5840,
+        480
+      ],
+      "id": "c2eff8c6-7c8e-44b6-b33d-f993cd561735",
+      "name": "Wait 5 sec after Uploading File",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5056,
+        1248
+      ],
+      "id": "5a4100e2-b487-4154-97ca-98907922c98e",
+      "name": "Wait 5 sec after defining Audio Metadata",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5168,
+        2048
+      ],
+      "id": "45d1d030-9190-41fe-a884-54a92e518bde",
+      "name": "Wait 5 sec after defining Video Metadata",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5792,
+        1248
+      ],
+      "id": "b58d29b7-5ddd-46b5-99ec-e7a267a1462e",
+      "name": "Wait 5 sec after Uploading Audio File",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5920,
+        2048
+      ],
+      "id": "72046d59-e506-4e98-9f64-7e94070e5d76",
+      "name": "Wait 5 sec after Uploading Video File",
+      "webhookId": "64cb1521-f63a-4c7a-8bba-5616bcc05188",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2624,
+        1824
+      ],
+      "id": "9f441d60-0465-4aec-9f5c-4ebc97477ff2",
+      "name": "Wait 5 sec before New Call",
+      "webhookId": "08f48811-2cfd-483f-a006-f60b6d89aff6",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "content": "# Sub-Workflow: Supabase RAG Google Drive Files Ingest - Complete Documentation\n\n## 📋 Overview\n\nThis n8n sub-workflow is a sophisticated ingestion engine designed to bridge Google Drive storage with a Supabase-based Retrieval-Augmented Generation (RAG) system. It automates the complex process of monitoring new files in Google Drive, categorizing them by type (PDF, Image, Audio, Video), and utilizing Google Gemini's advanced multimodal capabilities to extract and \"flatten\" their content into optimized, semantic prose for vector embedding.\n\nThe workflow's primary value proposition is its ability to handle unstructured data—including audio and video—by converting it into a standardized, high-density text format. This text is then transformed into vector embeddings using Google Gemini and stored in a Supabase Postgres database using the pgvector extension, making the original Google Drive files fully searchable and retrievable for AI-powered applications.\n\n## 👥 Who Is This Workflow For?\n\n* **AI Developers** building RAG applications that need to process diverse file types (multimodal RAG).\n* **Data Engineers** automating the pipeline between cloud storage and vector databases.\n* **Knowledge Management Teams** seeking to make multimedia archives (meeting recordings, PDFs, infographics) searchable via natural language.\n* **System Architects** implementing scalable document processing workflows using n8n and Supabase.\n\n## 🎯 Problem Statement\n\nTraditional RAG systems often struggle with multimedia content or complex document layouts. Manually transcribing audio, describing images, or cleaning PDF formatting is labor-intensive and prone to information loss.\n\nThis workflow eliminates these inefficiencies by:\n\n* Automatically detecting and categorizing new files from Google Drive.\n* Using Gemini Pro Vision and Gemini Flash models to \"understand\" and describe visual and auditory content.\n* Stripping away formatting artifacts that can confuse vector search algorithms.\n* Standardizing disparate data sources into a single, semantic vector space in Supabase.\n\n## ⚙️ How This Workflow Works\n\n### 1. File Detection and Categorization\n\nThe workflow is triggered as a sub-workflow, receiving a list of new files. The **Categorize File** node uses JavaScript logic to group files into categories: `pdf`, `image`, `audio`, `video`, or `other` based on their extensions (e.g., .mp4, .wav, .png, .pdf).\n\n### 2. Strategic Prompt Engineering\n\nThe **Prompt to Extract Info** node sets a highly specific \"Operational Protocol\" for the Gemini AI. It instructs the model to:\n\n* Identify the file type and name.\n* Perform an exhaustive content scan (including metadata, captions, and data points).\n* Synthesize all findings into a **single, continuous paragraph** of pure prose.\n* Remove all structural markers like bullets or dashes to optimize for RAG ingestion.\n\n### 3. Multimodal Processing via Google File API\n\nFor complex files (Audio/Video), the workflow interacts directly with the Google Generative AI File API:\n\n* **Metadata Definition**: It initiates a resumable upload by defining the file's metadata.\n* **File Download & Upload**: The file is downloaded from Google Drive and uploaded to the Google File API storage.\n* **AI Extraction**: Gemini-2.5-Flash (or similar model) is called to process the file URI and generate the descriptive text based on the extraction prompt.\n\n### 4. Vectorization and Storage\n\n* **Text Embedding**: The extracted \"flattened\" prose is sent to the **Embeddings Google Gemini** node to generate high-dimensional vectors.\n* **Supabase Upsert**: The vector, along with the original file metadata (Drive ID, filename), is stored in a Supabase vector store.\n* **Cleanup**: The workflow includes a maintenance branch to delete temporary files from the Google File API after processing is complete.\n\n## ✨ Key Benefits\n\n* **Multimodal Support**: Seamlessly processes video and audio alongside text.\n* **RAG-Optimized Output**: Produces dense, \"clean\" prose that improves search accuracy in vector databases.\n* **Cost Efficiency**: Uses Google Gemini's competitive pricing and efficient Flash models for extraction.\n* **Automation**: Replaces manual transcription and document tagging entirely.\n\n## 📦 Requirements\n\n### Technical Requirements\n\n* **n8n version**: 1.0.0+ (requires LangChain and Advanced AI nodes).\n* **Required n8n nodes**: Google Drive, Google Gemini, Supabase, HTTP Request, Code, Extract from File.\n* **External service accounts**: Google Cloud (Generative AI API), Supabase (Postgres with pgvector).\n\n### Credentials & Authentication\n\n* **Google Drive OAuth2**: For downloading files from Drive.\n* **Google Gemini (PaLM) API**: For embeddings and content extraction.\n* **HTTP Header Auth**: Used for the Google Generative AI File API (requires an `x-goog-api-key` header).\n* **Supabase API**: Service Role key for database operations.\n\n### API & Rate Limits\n\n* **Google Gemini API**: Subject to TPM (Tokens Per Minute) and RPM (Requests Per Minute) limits based on your tier.\n* **Google File API**: Files are stored temporarily (usually 48 hours) and have size limits (up to 2GB).\n\n## 🔧 Setup Instructions\n\n### Step 1: Google Cloud Setup\n\n1. Enable the **Generative Language API** in the Google Cloud Console.\n2. Generate an API Key.\n3. In n8n, create an \"HTTP Header Auth\" credential with name `x-goog-api-key` and your key as the value.\n\n### Step 2: Supabase Preparation\n\n1. Enable the `pgvector` extension in your Supabase database.\n2. Create a table (e.g., `documents`) with columns for `content` (text), `metadata` (jsonb), and `embedding` (vector).\n\n### Step 3: Node Configuration Highlights\n\n* **Download Node**: Ensure the \"Google File Conversion\" option is enabled for documents like Google Docs.\n* **Embeddings Node**: Set the model to `text-embedding-004` (or latest).\n* **Vector Store Node**: Configure the Supabase node to \"Insert\" or \"Upsert\" using the `embedding` column.\n\n## 🔒 Security & Compliance\n\n### Security Considerations\n\n* **Credential Storage**: Use n8n's Credential Manager; never hardcode API keys in the HTTP Request nodes.\n* **Temporary Storage**: Files uploaded to Google's File API are temporary, but the workflow includes a manual **Delete Uploaded Files** node for immediate cleanup.\n\n### Data Privacy\n\n* This workflow transmits file content to Google's servers for processing. Ensure your use case complies with Google's Generative AI Data Processing Addendum.\n* PII (Personally Identifiable Information) in audio/video will be transcribed into text and stored in Supabase.\n\n## ⚠️ Troubleshooting\n\n| Issue | Cause | Solution |\n| --- | --- | --- |\n| **Delete Failed** | File already expired or ID mismatch | The workflow uses \"Continue Regular Output\" on error for the Delete node to prevent workflow crashes. |\n| **AI Error** | Model overloaded or context too long | Switch to Gemini-1.5-Flash for larger video/audio files. |\n| **Base64 Error** | Memory limit reached on large files | Use the \"Extract from File\" node with the \"File Path\" option instead of \"Base64\" for files >20MB. |\n\n## 🔄 Maintenance & Optimization\n\n* **Regular Maintenance**: Monitor the Supabase storage size, as vector indexes can grow significantly.\n* **Optimization**: The workflow includes \"Wait\" nodes (e.g., **Wait 5 sec before New Call**) to respect API rate limits and ensure file availability after upload.",
+        "height": 2336,
+        "width": 1248,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "fc80daaa-d92d-4f2f-95cc-e62b9ad9e366",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Large Files Image or PDF Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Image or PDF Files Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Audio Files Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Video Files Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to base64": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Extract Image or PDF File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize File": {
+      "main": [
+        [
+          {
+            "node": "Prompt to Extract Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt to Extract Info": {
+      "main": [
+        [
+          {
+            "node": "Format to JSON String",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Get Uploaded Files": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after getting Uploaded Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Delete Uploaded Files": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after Delete using Google File API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Defining Audio Metadata": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after defining Audio Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio File": {
+      "main": [
+        [
+          {
+            "node": "Google File API: Upload Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Upload Audio File": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after Uploading Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Extract Audio File Info": {
+      "main": [
+        [
+          {
+            "node": "Audio Files Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audio Files Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Over New Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audio Files Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Audio Files Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Defining Video Metadata": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after defining Video Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video File": {
+      "main": [
+        [
+          {
+            "node": "Google File API: Upload Video File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Upload Video File": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after Uploading Video File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Extract Video File Info": {
+      "main": [
+        [
+          {
+            "node": "Video Files Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Files Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Over New Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Files Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Video Files Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch for Different Files": {
+      "main": [
+        [
+          {
+            "node": "If Image or PDF Size < 5 MB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If Image or PDF Size < 5 MB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google File API: Defining Audio Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google File API: Defining Video Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive API: Delete Uploaded File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image or PDF File": {
+      "main": [
+        [
+          {
+            "node": "Convert to base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Defining Image or PDF Metadata": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after defining Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Extract Image or PDF File Info": {
+      "main": [
+        [
+          {
+            "node": "Image or PDF Files Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image or PDF Files Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Over New Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image or PDF Files Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Image or PDF Files Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Large Image or PDF File": {
+      "main": [
+        [
+          {
+            "node": "Google File API: Upload Image or PDF File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google File API: Upload Image or PDF File": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after Uploading File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Extract Large Image or PDF File Info": {
+      "main": [
+        [
+          {
+            "node": "Large Files Image or PDF Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Large Files Image or PDF Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Over New Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Large Image or PDF Files Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Large Files Image or PDF Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File Size < 2 GB": {
+      "main": [
+        [
+          {
+            "node": "Categorize File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Drive API: Delete Uploaded File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Items Exists": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Uploaded Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Image or PDF Size < 5 MB": {
+      "main": [
+        [
+          {
+            "node": "Download Image or PDF File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google File API: Defining Image or PDF Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image or PDF Files Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Image or PDF Files Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audio Files Token Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Audio Files Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Files Token Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Video Files Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Large Image or PDF Files Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Large Image or PDF Files Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Not Document & Size > 5MB": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec before New Call",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation after Loop End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after Delete": {
+      "main": [
+        [
+          {
+            "node": "Loop Over New Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after Delete using Google File API": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Uploaded Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format to JSON String": {
+      "main": [
+        [
+          {
+            "node": "Switch for Different Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive API: Delete Uploaded File": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 sec after Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New File RAG Sub-Workflow": {
+      "main": [
+        [
+          {
+            "node": "Loop Over New Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over New Files": {
+      "main": [
+        [
+          {
+            "node": "If Not Document & Size > 5MB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If File Size < 2 GB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Uploaded Files": {
+      "main": [
+        [
+          {
+            "node": "No Operation after Loop End",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google File API: Delete Uploaded Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after getting Uploaded Files": {
+      "main": [
+        [
+          {
+            "node": "If Items Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after defining Metadata": {
+      "main": [
+        [
+          {
+            "node": "Download Large Image or PDF File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after Uploading File": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Extract Large Image or PDF File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after defining Audio Metadata": {
+      "main": [
+        [
+          {
+            "node": "Download Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after defining Video Metadata": {
+      "main": [
+        [
+          {
+            "node": "Download Video File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after Uploading Audio File": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Extract Audio File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec after Uploading Video File": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Extract Video File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 sec before New Call": {
+      "main": [
+        [
+          {
+            "node": "Google File API: Get Uploaded Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Vsyj4lPuDw5RGiAq",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "1c9d95cb-7a44-4389-8307-aa3f2fb6a5d7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c585f2620b1e811fa88e890c331ab057400f88adebd1d8bd64feeac19ecaec8"
+  },
+  "nodeGroups": [],
+  "id": "vcOW2PN6yiPgQyCt",
+  "tags": [
+    {
+      "updatedAt": "2026-05-29T13:33:10.024Z",
+      "createdAt": "2026-05-29T13:33:10.024Z",
+      "id": "MZSmpIv1lSCq0IgB",
+      "name": "RAG"
+    },
+    {
+      "updatedAt": "2026-05-29T13:34:12.166Z",
+      "createdAt": "2026-05-29T13:34:12.166Z",
+      "id": "hyci9TRRA0lGv2Zg",
+      "name": "Supabase"
+    },
+    {
+      "updatedAt": "2026-08-07T10:30:54.966Z",
+      "createdAt": "2026-05-16T12:51:40.286Z",
+      "id": "kV35B1Fu4iKfjxoJ",
+      "name": "Sub Workflow"
+    }
+  ]
+}
